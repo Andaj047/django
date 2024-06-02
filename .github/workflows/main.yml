@@ -1,0 +1,48 @@
+name: Build and Deploy in dev
+
+on:
+  push:
+    branches:    
+      - Dev
+    
+env:
+  applicationfolder: 'src/blank-csharp'
+  AWS_REGION: us-east-1
+  AWS_S3_BUCKET: git-action-ci-cd-build-dev
+
+jobs:
+  build:
+    name: Build and Package
+    runs-on: ubuntu-18.04
+    environment: Dev
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v2
+        name: Checkout Repository
+    
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 3.1.x
+      
+      - name: Dot net dependencies and AWS CLI
+        working-directory: './src/blank-csharp'
+        run: |
+          dotnet restore
+          dotnet tool install -g Amazon.Lambda.Tools
+      
+      - name: Build
+        working-directory: './src/blank-csharp'
+        run: dotnet build -c debug --no-restore
+        
+      - name: Test
+        working-directory: './src/blank-csharp'
+        run: dotnet test --no-restore --verbosity normal
+
+      - uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: ${{env.AWS_REGION}}
+          aws-access-key-id: ${{ secrets.DEV_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.DEV_AWS_SECRET_ACCESS_KEY }}
